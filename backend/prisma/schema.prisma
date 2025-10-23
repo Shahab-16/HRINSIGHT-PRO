@@ -1,12 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -14,10 +7,91 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User{
-  id Int @id @default(autoincrement())
-  name String?
-  email String @unique
-  password String?
-  created_at DateTime @default(now())
+enum HRRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model HRRegistrationRequest {
+  id          Int             @id @default(autoincrement())
+  orgName     String
+  contactName String
+  email       String
+  status      HRRequestStatus @default(PENDING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Role {
+  id        Int              @id @default(autoincrement())
+  name      String           @unique
+  createdAt DateTime         @default(now())
+  questions Question[]
+  tokens    CandidateToken[]
+}
+
+model Question {
+  id        Int      @id @default(autoincrement())
+  roleId    Int
+  area      String
+  text      String
+  options   Option[]
+  createdAt DateTime @default(now())
+
+  role      Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  responses Response[]
+}
+
+model Option {
+  id         Int    @id @default(autoincrement())
+  questionId Int
+  label      String
+  text       String
+  maturity   Int
+
+  question  Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  responses Response[]
+}
+
+model CandidateToken {
+  id        Int      @id @default(autoincrement())
+  email     String
+  roleId    Int
+  token     String   @unique
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  role        Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  testSession TestSession?
+  responses   Response[]
+}
+
+model TestSession {
+  id        Int      @id @default(autoincrement())
+  tokenId   Int      @unique
+  startedAt DateTime @default(now())
+  submitted Boolean  @default(false)
+
+  token CandidateToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+}
+
+model Response {
+  id         Int      @id @default(autoincrement())
+  tokenId    Int
+  questionId Int
+  optionId   Int
+  maturity   Int
+  createdAt  DateTime @default(now())
+
+  token    CandidateToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  question Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  option   Option         @relation(fields: [optionId], references: [id], onDelete: Cascade)
 }
