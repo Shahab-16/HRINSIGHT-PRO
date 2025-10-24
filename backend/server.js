@@ -15,9 +15,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-await connectDB(); 
-
-app.get("/health", (_, res) => res.json({ ok: true }));
+// Root route
+app.get("/", (req, res) => {
+  res.send("Hello World 🌍");
+});
 
 app.use("/api/admin", adminRoutes);
 app.use("/api/hr-requests", hrReqRoutes);
@@ -27,9 +28,17 @@ app.use("/api/tokens", tokenRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-connectDB().then(() => {
-  app.listen(process.env.PORT || 5000, () =>
-    console.log(`🚀 Server running on port ${process.env.PORT}`)
-  );
-});
+// Wrap DB connection and server start in async function
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to connect to database:", error.message);
+    process.exit(1);
+  }
+};
 
+startServer();
