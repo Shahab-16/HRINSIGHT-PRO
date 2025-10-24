@@ -29,7 +29,7 @@ const LoginForm = () => {
 
     try {
       if (currState === "Login") {
-        const res = await axios.post(`http://localhost:5000/${role}/login`, {
+        const res = await axios.post(`http://localhost:5000/api/${role}/login`, {
           email: formData.email,
           password: formData.password,
         });
