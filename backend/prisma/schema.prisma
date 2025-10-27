@@ -1,3 +1,5 @@
+//
+// ------------- PRISMA CONFIG -------------
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,12 +9,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//
+// ------------- ENUMS -------------
 enum HRRequestStatus {
   PENDING
   APPROVED
   REJECTED
 }
 
+//
+// ------------- MODELS -------------
+
+// ✅ Admin user (for main dashboard)
 model Admin {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -20,36 +28,49 @@ model Admin {
   createdAt DateTime @default(now())
 }
 
-model HRRegistrationRequest {
-  id          Int             @id @default(autoincrement())
-  orgName     String
-  contactName String
-  email       String
-  status      HRRequestStatus @default(PENDING)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+// ✅ HR consultancy user (login + OTP verification)
+model HRUser {
+  id           Int       @id @default(autoincrement())
+  name         String?
+  email        String    @unique
+  password     String?
+  otp          String?
+  otpExpiresAt DateTime?
+  verified     Boolean   @default(false)
+  organization String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  responses    Response[]
+  testSessions TestSession[]
+  invites      CandidateInvite[] // ✅ One HR can have many invites
 }
 
+// ✅ Role (e.g., “General”, “Leadership”, etc.)
 model Role {
-  id        Int              @id @default(autoincrement())
-  name      String           @unique
-  createdAt DateTime         @default(now())
-  questions Question[]
-  tokens    CandidateToken[]
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  questions    Question[]
+  testSessions TestSession[]
 }
 
+// ✅ Diagnostic Questions uploaded from Excel
 model Question {
   id        Int      @id @default(autoincrement())
-  roleId    Int
   area      String
   text      String
-  options   Option[]
+  roleId    Int
   createdAt DateTime @default(now())
 
   role      Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  responses Response[]
+  options   Option[] // maturity options (A/B/C/D)
+  responses Response[] // ✅ back-relation from Response
 }
 
+// ✅ Each maturity level option for a question
 model Option {
   id         Int    @id @default(autoincrement())
   questionId Int
@@ -57,41 +78,46 @@ model Option {
   text       String
   maturity   Int
 
-  question  Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  responses Response[]
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
-model CandidateToken {
-  id        Int      @id @default(autoincrement())
-  email     String
-  roleId    Int
-  token     String   @unique
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  role        Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  testSession TestSession?
-  responses   Response[]
-}
-
+// ✅ Each test session taken by an HR
 model TestSession {
   id        Int      @id @default(autoincrement())
-  tokenId   Int      @unique
+  hrId      Int
+  roleId    Int?
   startedAt DateTime @default(now())
   submitted Boolean  @default(false)
 
-  token CandidateToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  hr        HRUser     @relation(fields: [hrId], references: [id], onDelete: Cascade)
+  role      Role?      @relation(fields: [roleId], references: [id])
+  responses Response[]
 }
 
+// ✅ Individual responses for each question during a session
 model Response {
-  id         Int      @id @default(autoincrement())
-  tokenId    Int
-  questionId Int
-  optionId   Int
-  maturity   Int
-  createdAt  DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  hrId         Int
+  sessionId    Int
+  questionId   Int
+  chosenOption String? // label of chosen option (A/B/C/D)
+  score        Int? // numeric score if required
+  createdAt    DateTime @default(now())
 
-  token    CandidateToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
-  question Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  option   Option         @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  hr       HRUser      @relation(fields: [hrId], references: [id], onDelete: Cascade)
+  session  TestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// ✅ Candidate invite for sending test links via email/WhatsApp
+model CandidateInvite {
+  id        Int      @id @default(autoincrement())
+  email     String?
+  phone     String?
+  token     String   @unique
+  createdAt DateTime @default(now())
+  used      Boolean  @default(false)
+  hrId      Int? // optional, link to HRUser if registered
+
+  hr HRUser? @relation(fields: [hrId], references: [id], onDelete: Cascade)
 }

@@ -1,150 +1,94 @@
 import React, { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import axios from "axios";
+import { Trash2, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
 
 const ListQuestions = () => {
   const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Dummy questions for frontend testing
-    const dummyData = [
-      {
-        _id: "1",
-        theme: "Leadership",
-        category: "Employee Engagement",
-        question:
-          "How often does leadership communicate key organizational goals to employees?",
-        options: [
-          "Regularly and transparently across all departments.",
-          "Occasionally during major events.",
-          "Rarely or inconsistently.",
-          "No structured communication plan exists.",
-        ],
-      },
-      {
-        _id: "2",
-        theme: "Culture",
-        category: "Learning & Development",
-        question:
-          "How does the organization encourage continuous learning among employees?",
-        options: [
-          "Employees have access to curated learning paths with incentives.",
-          "Learning is encouraged but not tracked.",
-          "Occasional workshops are held.",
-          "No formal learning initiatives exist.",
-        ],
-      },
-      {
-        _id: "3",
-        theme: "Performance",
-        category: "Feedback Mechanism",
-        question:
-          "How is employee feedback incorporated into performance reviews?",
-        options: [
-          "Structured 360-degree feedback is implemented consistently.",
-          "Feedback is collected but not always used.",
-          "Feedback is ad-hoc and informal.",
-          "No feedback mechanism exists.",
-        ],
-      },
-      {
-        _id: "4",
-        theme: "Strategy",
-        category: "Goal Alignment",
-        question:
-          "How well are individual goals aligned with organizational strategy?",
-        options: [
-          "Fully aligned with measurable OKRs.",
-          "Partially aligned but lacks clarity.",
-          "Minimal alignment exists.",
-          "No defined goal alignment process.",
-        ],
-      },
-      {
-        _id: "5",
-        theme: "People Management",
-        category: "Recognition",
-        question:
-          "How often are employees recognized for their contributions?",
-        options: [
-          "Recognition is frequent and part of culture.",
-          "Occasional recognition happens during events.",
-          "Rarely recognized formally.",
-          "No recognition structure exists.",
-        ],
-      },
-    ];
+  const BackendURL = import.meta.env.VITE_BACKEND_URL;
 
-    setQuestions(dummyData);
-  }, []);
-
-  const handleDelete = (id) => {
-    if (!window.confirm("Are you sure you want to delete this question?"))
-      return;
-    setQuestions((prev) => prev.filter((q) => q._id !== id));
+  const fetchQuestions = async () => {
+    try {
+      const res = await axios.get(`${BackendURL}/api/admin/questions`);
+      setQuestions(res.data.questions || []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load questions");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <div className="p-4">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-        List Questions
-      </h2>
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this question?")) return;
+    try {
+      await axios.delete(`${BackendURL}/api/admin/questions/${id}`);
+      setQuestions((prev) => prev.filter((q) => q.id !== id));
+      toast.success("Question deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete question");
+    }
+  };
 
-      <div className="bg-white shadow-md rounded-xl p-6 border">
-        {questions.length === 0 ? (
-          <p className="text-gray-500 text-center py-10">
-            No questions available.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm md:text-base">
-              <thead className="bg-gray-100 text-gray-800 font-semibold">
-                <tr>
-                  <th className="p-3 border-b">#</th>
-                  <th className="p-3 border-b">Theme</th>
-                  <th className="p-3 border-b">Category</th>
-                  <th className="p-3 border-b">Question</th>
-                  <th className="p-3 border-b">Options</th>
-                  <th className="p-3 border-b text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {questions.map((q, idx) => (
-                  <tr
-                    key={q._id}
-                    className={`border-b hover:bg-gray-50 ${
-                      idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    }`}
-                  >
-                    <td className="p-3">{idx + 1}</td>
-                    <td className="p-3 font-medium text-gray-700">
-                      {q.theme}
-                    </td>
-                    <td className="p-3 text-gray-700">{q.category}</td>
-                    <td className="p-3 text-gray-800 font-medium">
-                      {q.question}
-                    </td>
-                    <td className="p-3">
-                      <ul className="list-disc ml-5 text-gray-700 text-sm">
-                        {q.options.map((opt, i) => (
-                          <li key={i}>{opt}</li>
-                        ))}
-                      </ul>
-                    </td>
-                    <td className="p-3 text-center">
-                      <button
-                        onClick={() => handleDelete(q._id)}
-                        className="text-red-500 hover:text-red-700 transition"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+  useEffect(() => {
+    fetchQuestions();
+  }, []);
+
+  if (loading)
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="animate-spin text-indigo-600" size={32} />
       </div>
+    );
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-6">List of Questions</h2>
+
+      {questions.length === 0 ? (
+        <p className="text-gray-600">No questions found.</p>
+      ) : (
+        <div className="overflow-x-auto bg-white shadow border rounded-xl">
+          <table className="w-full border-collapse text-sm text-left">
+            <thead className="bg-gray-100 text-gray-800">
+              <tr>
+                <th className="p-3 border-b">#</th>
+                <th className="p-3 border-b">Area</th>
+                <th className="p-3 border-b">Question</th>
+                <th className="p-3 border-b">Options</th>
+                <th className="p-3 border-b text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {questions.map((q, i) => (
+                <tr key={q.id} className="hover:bg-gray-50 border-b">
+                  <td className="p-3">{i + 1}</td>
+                  <td className="p-3">{q.area}</td>
+                  <td className="p-3">{q.text}</td>
+                  <td className="p-3">
+                    <ul className="list-disc ml-4">
+                      {q.options?.map((opt, idx) => (
+                        <li key={idx}>{opt.text}</li>
+                      ))}
+                    </ul>
+                  </td>
+                  <td className="p-3 text-center">
+                    <button
+                      onClick={() => handleDelete(q.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

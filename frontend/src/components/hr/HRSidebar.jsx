@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 const HRSidebar = ({ isOpen }) => {
   const [openTests, setOpenTests] = useState(false);
@@ -26,6 +27,15 @@ const HRSidebar = ({ isOpen }) => {
         ? "text-indigo-700 font-semibold"
         : "text-gray-700 hover:text-indigo-600"
     }`;
+
+  const handleLogout = () => {
+    // Remove stored HR token
+    localStorage.removeItem("hrToken");
+    toast.success("Logged out successfully!");
+    setTimeout(() => {
+      window.location.href = "/"; 
+    }, 1000);
+  };
 
   return (
     <aside
@@ -78,7 +88,11 @@ const HRSidebar = ({ isOpen }) => {
               {isOpen && <span>Reports</span>}
             </div>
             {isOpen &&
-              (openReports ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+              (openReports ? (
+                <ChevronUp size={16} />
+              ) : (
+                <ChevronDown size={16} />
+              ))}
           </button>
 
           {openReports && isOpen && (
@@ -96,7 +110,10 @@ const HRSidebar = ({ isOpen }) => {
 
       {/* === LOGOUT BUTTON === */}
       <div className="p-4 mb-3">
-        <button className="w-full py-2 flex items-center justify-center gap-2 rounded bg-red-500 text-white font-semibold hover:bg-red-600 transition">
+        <button
+          onClick={handleLogout}
+          className="w-full py-2 flex items-center justify-center gap-2 rounded bg-red-500 text-white font-semibold hover:bg-red-600 transition"
+        >
           <LogOut size={18} />
           {isOpen && <span>Logout</span>}
         </button>

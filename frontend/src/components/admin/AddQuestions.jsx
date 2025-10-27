@@ -1,139 +1,154 @@
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import axios from "axios";
-import { Upload, CheckCircle, FileSpreadsheet } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
 
 const AddQuestions = () => {
   const [file, setFile] = useState(null);
-  const [parsedData, setParsedData] = useState([]);
+  const [parsedQuestions, setParsedQuestions] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [success, setSuccess] = useState(false);
 
-  // Handle Excel parsing
+  const BackendURL=import.meta.env.VITE_BACKEND_URL
+
+  // File change handler
   const handleFileChange = (e) => {
-    const selected = e.target.files[0];
-    if (!selected) return;
-    setFile(selected);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const workbook = XLSX.read(event.target.result, { type: "binary" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet);
-
-      // Extract the data according to your Excel structure
-      const questions = rows.map((row, index) => ({
-        id: index + 1,
-        theme: row["Theme"] || "",
-        category: row["Category"] || "",
-        question: row["Diagnostic Question"] || "",
-        options: [
-          row["Leading"] || "",
-          row["Established"] || "",
-          row["Emerging"] || "",
-          row["Absent"] || "",
-        ],
-        scores: [4, 3, 2, 1],
-      }));
-
-      setParsedData(questions.filter((q) => q.question.trim() !== ""));
-      setSuccess(false);
-    };
-    reader.readAsBinaryString(selected);
+    const uploadedFile = e.target.files[0];
+    if (!uploadedFile) return;
+    setFile(uploadedFile);
+    parseExcel(uploadedFile);
   };
 
+  // Parse Excel according to your structure
+  const parseExcel = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+      const formatted = jsonData.map((row, index) => ({
+        id: index + 1,
+        area: row["Category"]?.trim() || "General",
+        question: row["Diagnostic Question"]?.trim() || "",
+        options: [
+          row["Leading"]?.trim(),
+          row["Established"]?.trim(),
+          row["Emerging"]?.trim(),
+          row["Absent"]?.trim(),
+        ].filter((opt) => opt && opt.length > 0),
+      }));
+
+      const filtered = formatted.filter((q) => q.question && q.options.length > 0);
+      setParsedQuestions(filtered);
+      console.log("✅ Parsed Questions:", filtered);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Upload to backend
   const handleUpload = async () => {
-    if (parsedData.length === 0) return alert("Please upload a valid file.");
+    if (parsedQuestions.length === 0) {
+      toast.error("No valid questions found to upload!");
+      return;
+    }
     setUploading(true);
     try {
-      await axios.post("/api/admin/upload-questions", { questions: parsedData });
-      setSuccess(true);
-      setParsedData([]);
+      await axios.post(`${BackendURL}/api/admin/questions/upload`, { questions: parsedQuestions });
+      toast.success("Questions uploaded successfully!");
       setFile(null);
-    } catch (error) {
-      console.error("Upload failed:", error);
-      alert("Failed to upload questions. Check console for details.");
+      setParsedQuestions([]);
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast.error("Failed to upload questions");
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-4">Add Questions</h2>
+    <div className="p-6">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+        Add Questions from Excel
+      </h2>
 
-      {/* Upload Card */}
-      <div className="bg-white shadow-md rounded-xl p-6 border flex flex-col items-center justify-center border-dashed border-gray-300 hover:border-indigo-500 transition">
-        <FileSpreadsheet size={40} className="text-indigo-600 mb-3" />
-        <p className="text-gray-600 mb-3 text-center">
-          Upload Excel (.xlsx) file with columns: <br />
-          <strong>Theme, Category, Diagnostic Question, Leading, Established, Emerging, Absent</strong>
+      {/* Upload Box */}
+      <div className="bg-white border rounded-xl shadow p-8 flex flex-col items-center justify-center">
+        <FileSpreadsheet size={64} className="text-indigo-500 mb-4" />
+        <p className="text-gray-700 mb-4 text-center">
+          Upload your Excel file with columns: <br />
+          <strong>
+            Theme, Category, S.No, Diagnostic Question, Leading, Established, Emerging, Absent
+          </strong>
         </p>
-
-        <input
-          type="file"
-          accept=".xlsx"
-          onChange={handleFileChange}
-          className="mb-4 text-sm"
-        />
+        <label className="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md flex items-center gap-2">
+          <Upload size={18} />
+          Choose File
+          <input
+            type="file"
+            accept=".xlsx,.csv"
+            onChange={handleFileChange}
+            hidden
+          />
+        </label>
 
         {file && (
-          <p className="text-sm text-gray-700 mb-3">
-            Selected File: <strong>{file.name}</strong>
+          <p className="mt-3 text-sm text-gray-600">
+            Selected file: <strong>{file.name}</strong>
           </p>
-        )}
-
-        <button
-          disabled={uploading || parsedData.length === 0}
-          onClick={handleUpload}
-          className={`px-5 py-2 rounded-md text-white font-semibold transition ${
-            uploading || parsedData.length === 0
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-indigo-600 hover:bg-indigo-700"
-          }`}
-        >
-          {uploading ? "Uploading..." : "Upload to Server"}
-        </button>
-
-        {success && (
-          <div className="flex items-center gap-2 mt-4 text-green-600 font-medium">
-            <CheckCircle size={18} /> Questions uploaded successfully!
-          </div>
         )}
       </div>
 
-      {/* Preview */}
-      {parsedData.length > 0 && (
-        <div className="mt-10">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">
-            Preview ({parsedData.length} Questions)
+      {/* Preview Table */}
+      {parsedQuestions.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">
+            Preview ({parsedQuestions.length} questions)
           </h3>
 
-          <div className="bg-white rounded-xl shadow p-4 border max-h-[500px] overflow-y-auto">
-            {parsedData.map((q) => (
-              <div
-                key={q.id}
-                className="border-b last:border-b-0 py-4 hover:bg-gray-50 transition"
-              >
-                <p className="font-medium text-gray-900">
-                  {q.theme} › {q.category}
-                </p>
-                <p className="text-gray-800 font-semibold mt-1">
-                  {q.question}
-                </p>
-                <ul className="list-disc list-inside mt-2 text-gray-700 text-sm">
-                  {q.options.map((opt, i) => (
-                    <li key={i}>
-                      <span className="font-medium text-gray-600 mr-2">
-                        {["Leading", "Established", "Emerging", "Absent"][i]}:
-                      </span>
-                      {opt}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <div className="overflow-x-auto border rounded-lg shadow bg-white">
+            <table className="w-full text-sm text-left border-collapse">
+              <thead className="bg-gray-100 text-gray-800">
+                <tr>
+                  <th className="p-3 border-b">#</th>
+                  <th className="p-3 border-b">Category</th>
+                  <th className="p-3 border-b">Question</th>
+                  <th className="p-3 border-b">Options</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parsedQuestions.slice(0, 10).map((q) => (
+                  <tr key={q.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3">{q.id}</td>
+                    <td className="p-3">{q.area}</td>
+                    <td className="p-3">{q.question}</td>
+                    <td className="p-3">
+                      <ul className="list-disc ml-5">
+                        {q.options.map((opt, i) => (
+                          <li key={i}>{opt}</li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+
+          <button
+            onClick={handleUpload}
+            disabled={uploading}
+            className="mt-6 bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg flex items-center gap-2"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="animate-spin" /> Uploading...
+              </>
+            ) : (
+              "Upload Questions"
+            )}
+          </button>
         </div>
       )}
     </div>

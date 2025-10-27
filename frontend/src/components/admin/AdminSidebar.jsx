@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -9,14 +9,33 @@ import {
   User,
   LogOut,
 } from "lucide-react";
+import { toast } from "react-toastify"; // if you're using react-toastify
 
 const AdminSidebar = ({ isOpen }) => {
+  const navigate = useNavigate();
+
   const linkClass = ({ isActive }) =>
     `flex items-center gap-3 px-4 py-2 rounded-md text-[15px] transition-all duration-200 ${
       isActive
         ? "bg-indigo-50 text-indigo-700 font-semibold"
         : "text-gray-800 hover:bg-gray-100"
     }`;
+
+  // ✅ Logout handler
+  const handleLogout = () => {
+    // Remove token from localStorage or cookies
+    localStorage.removeItem("adminToken");
+    sessionStorage.removeItem("adminToken");
+
+    // Optional: clear any other stored data (admin info, etc.)
+    localStorage.removeItem("adminInfo");
+
+    // Show message
+    toast.success("Logged out successfully!");
+
+    // Redirect to login page
+    navigate("/");
+  };
 
   return (
     <aside
@@ -62,9 +81,12 @@ const AdminSidebar = ({ isOpen }) => {
         </NavLink>
       </div>
 
-      {/* Logout */}
+      {/* ✅ Logout Button */}
       <div className="p-4 mb-3">
-        <button className="w-full py-2 flex items-center justify-center gap-2 rounded bg-red-500 text-white font-semibold hover:bg-red-600 transition">
+        <button
+          onClick={handleLogout}
+          className="w-full py-2 flex items-center justify-center gap-2 rounded bg-red-500 text-white font-semibold hover:bg-red-600 transition"
+        >
           <LogOut size={18} />
           {isOpen && <span>Logout</span>}
         </button>
