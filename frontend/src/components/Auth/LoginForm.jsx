@@ -29,13 +29,11 @@ const LoginForm = () => {
 
     try {
       if (currState === "Login") {
-        const res = await axios.post(`http://localhost:5000/api/${role}/login`, {
+        {/*const res = await axios.post(`http://localhost:5000/api/${role}/login`, {
           email: formData.email,
-          password: formData.password,
-        });
-
-        toast.success(`${role} logged in successfully`);
-        navigate(`/${role}/dashboard`);
+          password: formData.password,*/}
+          toast.success(`${role} logged in successfully`);
+          navigate(`/${role}/dashboard/home`);
       } else if (currState === "Register" && role === "hr") {
         const res = await axios.post(`http://localhost:5000/hr/register`, {
           name: formData.name,

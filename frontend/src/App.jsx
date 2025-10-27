@@ -5,6 +5,7 @@ import LoginOptions from "./components/Auth/LoginOptions";
 import LoginForm from "./components/Auth/LoginForm";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import HRDashboard from "./pages/hr/HRDashboard";
+import HRTestPage from "./pages/hr/HRTestPage";
 
 function App() {
   return (
@@ -23,8 +24,11 @@ function App() {
         />
 
         {/* ---------- DASHBOARDS ---------- */}
-        <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
-        <Route path="/hr/dashboard/*" element={<HRDashboard />} />
+        <Route path="/admin/*" element={<AdminDashboard />} />
+        <Route path="/hr/*" element={<HRDashboard />} />
+
+
+        <Route path="/hr/test/:testId" element={<HRTestPage />} />
       </Routes>
     </div>
   );
