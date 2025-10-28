@@ -1,18 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { ImCross, ImArrowLeft2 } from "react-icons/im";
-import { FaUserShield, FaUserPlus, FaEnvelopeOpenText } from "react-icons/fa";
+import {
+  FaUserShield,
+  FaUserPlus,
+  FaEnvelopeOpenText,
+} from "react-icons/fa";
 import { toast } from "react-toastify";
 
-const LoginForm = () => {
+const LoginForm = ({ inviteMode = false }) => {
   const navigate = useNavigate();
-  const { role } = useParams();
+  const params = useParams();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token"); // test token in invite link
   const BackendURL = import.meta.env.VITE_BACKEND_URL;
 
-  const [currState, setCurrState] = useState("Login"); // Login | Register | Verify
+  // ✅ If invite link (no role param) → HR by default
+  const role = params.role || "hr";
+
+  const [currState, setCurrState] = useState("Login");
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [formData, setFormData] = useState({
     name: "",
@@ -20,6 +32,12 @@ const LoginForm = () => {
     password: "",
     confirmPassword: "",
   });
+
+  useEffect(() => {
+    if (inviteMode || token) {
+      setCurrState("Register");
+    }
+  }, [inviteMode, token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,10 +58,14 @@ const LoginForm = () => {
 
         localStorage.setItem(`${role}Token`, res.data.token);
         toast.success(`${role.toUpperCase()} logged in successfully`);
-        navigate(`/${role}/dashboard/home`);
 
-        // ✅ REGISTER → send OTP
-      } else if (currState === "Register" && role === "hr") {
+        // 🚀 If user came from test link → go directly to test
+        if (token) navigate(`/hr/test/${token}`);
+        else navigate(`/${role}/dashboard/home`);
+      }
+
+      // ✅ REGISTER → send OTP
+      else if (currState === "Register" && role === "hr") {
         if (formData.password !== formData.confirmPassword)
           return toast.error("Passwords do not match!");
 
@@ -53,19 +75,22 @@ const LoginForm = () => {
           password: formData.password,
         });
 
-        setOtpSent(true);
         setCurrState("Verify");
         toast.success("OTP sent to your email");
+      }
 
-        // ✅ VERIFY OTP
-      } else if (currState === "Verify" && role === "hr") {
-        const res = await axios.post(`${BackendURL}/api/hr/verify`, {
+      // ✅ VERIFY OTP
+      else if (currState === "Verify" && role === "hr") {
+        await axios.post(`${BackendURL}/api/hr/verify`, {
           email: formData.email,
           otp,
         });
 
         toast.success("Email verified successfully!");
-        setCurrState("Login");
+
+        // 🚀 After verification → go directly to test if token exists
+        if (token) navigate(`/hr/test/${token}`);
+        else setCurrState("Login");
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Something went wrong");
@@ -89,7 +114,7 @@ const LoginForm = () => {
           onClick={goBack}
         />
 
-        {/* Left Side Icon Section */}
+        {/* Left Side */}
         <div className="w-1/2 hidden lg:flex items-center justify-center bg-indigo-50">
           {role === "admin" ? (
             <FaUserShield className="text-[150px] text-indigo-500" />
@@ -150,7 +175,6 @@ const LoginForm = () => {
               />
             )}
 
-            {/* Login / Register common inputs */}
             {currState !== "Verify" && (
               <>
                 <input
@@ -161,7 +185,6 @@ const LoginForm = () => {
                   onChange={handleChange}
                   className="w-full h-[50px] border border-gray-300 rounded-lg px-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
-
                 <input
                   type="password"
                   name="password"
@@ -173,7 +196,6 @@ const LoginForm = () => {
               </>
             )}
 
-            {/* Confirm Password (Register only) */}
             {currState === "Register" && role === "hr" && (
               <input
                 type="password"
@@ -185,7 +207,6 @@ const LoginForm = () => {
               />
             )}
 
-            {/* OTP Field */}
             {currState === "Verify" && (
               <div className="flex flex-col gap-4">
                 <input
@@ -197,12 +218,12 @@ const LoginForm = () => {
                   maxLength={6}
                 />
                 <p className="text-center text-gray-600 text-sm flex items-center justify-center gap-2">
-                  <FaEnvelopeOpenText className="text-blue-500" /> Check your email for the OTP
+                  <FaEnvelopeOpenText className="text-blue-500" /> Check your
+                  email for the OTP
                 </p>
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -217,6 +238,32 @@ const LoginForm = () => {
                 : "Verify OTP"}
             </button>
           </form>
+
+          {currState !== "Verify" && (
+            <p className="text-center text-gray-600 mt-4">
+              {currState === "Login" ? (
+                <>
+                  Don’t have an account?{" "}
+                  <button
+                    onClick={() => setCurrState("Register")}
+                    className="text-blue-600 hover:underline font-semibold"
+                  >
+                    Register here
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{" "}
+                  <button
+                    onClick={() => setCurrState("Login")}
+                    className="text-blue-600 hover:underline font-semibold"
+                  >
+                    Login here
+                  </button>
+                </>
+              )}
+            </p>
+          )}
         </div>
       </div>
     </div>

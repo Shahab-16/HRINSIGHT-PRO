@@ -65,9 +65,6 @@ export const verifyHR = async (req, res) => {
   }
 };
 
-//
-// 3️⃣ Login
-//
 export const loginHR = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -87,5 +84,34 @@ export const loginHR = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Login failed" });
+  }
+};
+
+
+
+export const getAllQuestions = async (req, res) => {
+  try {
+    const rows = await prisma.question.findMany({
+      orderBy: { id: "asc" },
+      include: {
+        options: {
+          select: { id: true, text: true }, // no label needed if order is id
+          orderBy: { id: "asc" },           // <-- preserve Excel insertion order
+        },
+      },
+    });
+
+    // Normalize to a frontend-friendly shape: { id, area, text, options: ["...", "...", "...", "..."] }
+    const questions = rows.map((q) => ({
+      id: q.id,
+      area: q.area,
+      text: q.text,
+      options: (q.options || []).map((o) => o.text), // <-- no sorting, just in DB order
+    }));
+
+    return res.json({ questions });
+  } catch (err) {
+    console.error("getAllQuestions error:", err);
+    return res.status(500).json({ message: "Failed to fetch questions" });
   }
 };

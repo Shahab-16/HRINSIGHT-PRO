@@ -23,11 +23,19 @@ function App() {
           }
         />
 
+        {/* ---------- INVITE REGISTRATION ROUTE ---------- */}
+        <Route
+          path="/register"
+          element={
+            <div className="fullscreen-container">
+              <LoginForm inviteMode={true} />
+            </div>
+          }
+        />
+
         {/* ---------- DASHBOARDS ---------- */}
         <Route path="/admin/*" element={<AdminDashboard />} />
         <Route path="/hr/*" element={<HRDashboard />} />
-
-
         <Route path="/hr/test/:testId" element={<HRTestPage />} />
       </Routes>
     </div>
