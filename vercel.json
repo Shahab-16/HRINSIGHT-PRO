@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "backend/api/index.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "buildCommand": "npm install && npm run prisma:generate",
+  "installCommand": "npm install",
+  "outputDirectory": "backend"
+}
