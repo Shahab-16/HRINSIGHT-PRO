@@ -9,12 +9,26 @@ import tokenRoutes from "./routes/token.routes.js";
 dotenv.config();
 const app = express();
 
-app.use(cors({ origin: "*", credentials: true }));
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "https://hrinsight-pro.vercel.app"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
+// Connect once per cold start
 await connectDB();
 
-app.get("/", (_, res) => res.send("✅ HRInsight Pro Backend Live!"));
+// ✅ Return a response immediately
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "✅ HRInsight Pro Backend Live!",
+    db: "Connected",
+  });
+});
+
+// Routes
 app.use("/api/admin", adminRoutes);
 app.use("/api/hr", hrRoutes);
 app.use("/api/tokens", tokenRoutes);

@@ -3,10 +3,8 @@ import { PrismaClient } from "@prisma/client";
 let prisma;
 
 if (process.env.NODE_ENV === "production") {
-  // Create new client per invocation on Vercel
   prisma = new PrismaClient();
 } else {
-  // Reuse in dev to avoid multiple connections
   if (!global.prisma) global.prisma = new PrismaClient();
   prisma = global.prisma;
 }
@@ -20,7 +18,6 @@ export const connectDB = async () => {
   }
 };
 
-// 🔥 critical: close Prisma after each invocation in serverless
 export const disconnectDB = async () => {
   try {
     if (process.env.NODE_ENV === "production") {
