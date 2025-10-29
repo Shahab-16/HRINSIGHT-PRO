@@ -2,10 +2,12 @@ import { prisma } from "../DB/db.config.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import otpGenerator from "otp-generator";
-import { sendMail } from "../utils/sendEmail.js";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 //
-// 1️⃣ Register - sends OTP
+// 1️⃣ Register - sends OTP using Resend
 //
 export const registerHR = async (req, res) => {
   try {
@@ -24,7 +26,14 @@ export const registerHR = async (req, res) => {
     if (existing) {
       await prisma.hRUser.update({
         where: { email },
-        data: { name, organization, otp, otpExpiresAt: expiry, password: hashed, verified: false },
+        data: {
+          name,
+          organization,
+          otp,
+          otpExpiresAt: expiry,
+          password: hashed,
+          verified: false,
+        },
       });
     } else {
       await prisma.hRUser.create({
@@ -32,7 +41,29 @@ export const registerHR = async (req, res) => {
       });
     }
 
-    await sendMail(email, "HRInsight Pro – Verify Your Email", `Your OTP is ${otp}. It expires in 5 minutes.`);
+    // ✉️ Send OTP Email using Resend
+    try {
+      await resend.emails.send({
+        from: "HRInsight Pro <onboarding@resend.dev>", // replace after verifying your domain
+        to: email,
+        subject: "HRInsight Pro – Verify Your Email",
+        html: `
+          <div style="font-family: Arial, sans-serif; color:#333; background:#f9fafb; padding:20px; border-radius:8px;">
+            <h2 style="color:#2563eb;">Verify Your Email</h2>
+            <p>Dear ${name || "User"},</p>
+            <p>Your OTP for HRInsight Pro is:</p>
+            <div style="font-size:28px; font-weight:bold; color:#2563eb; letter-spacing:3px; margin:10px 0;">${otp}</div>
+            <p>This OTP will expire in <strong>5 minutes</strong>.</p>
+            <p>If you didn’t request this, please ignore this message.</p>
+            <br/>
+            <p style="font-size:12px; color:#888;">© ${new Date().getFullYear()} HRInsight Pro | Perennial Systems</p>
+          </div>
+        `,
+      });
+      console.log(`✅ OTP email sent to ${email}`);
+    } catch (err) {
+      console.error("❌ Failed to send OTP email:", err.message);
+    }
 
     res.json({ message: "OTP sent to email for verification" });
   } catch (err) {
@@ -65,6 +96,9 @@ export const verifyHR = async (req, res) => {
   }
 };
 
+//
+// 3️⃣ Login HR
+//
 export const loginHR = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -78,7 +112,11 @@ export const loginHR = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     res.json({ message: "Login successful", token, user });
   } catch (err) {
@@ -87,26 +125,26 @@ export const loginHR = async (req, res) => {
   }
 };
 
-
-
+//
+// 4️⃣ Get All Questions
+//
 export const getAllQuestions = async (req, res) => {
   try {
     const rows = await prisma.question.findMany({
       orderBy: { id: "asc" },
       include: {
         options: {
-          select: { id: true, text: true }, // no label needed if order is id
-          orderBy: { id: "asc" },           // <-- preserve Excel insertion order
+          select: { id: true, text: true },
+          orderBy: { id: "asc" },
         },
       },
     });
 
-    // Normalize to a frontend-friendly shape: { id, area, text, options: ["...", "...", "...", "..."] }
     const questions = rows.map((q) => ({
       id: q.id,
       area: q.area,
       text: q.text,
-      options: (q.options || []).map((o) => o.text), // <-- no sorting, just in DB order
+      options: (q.options || []).map((o) => o.text),
     }));
 
     return res.json({ questions });
