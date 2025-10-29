@@ -9,17 +9,11 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-
-    "vercel-build": "npx prisma generate && echo '✅ Prisma Client generated for Vercel'",
-    "postinstall": "npx prisma generate",
-    
-    "prisma:generate": "npx prisma generate",
-    "prisma:migrate": "npx prisma migrate dev --name init",
-    "prisma:studio": "npx prisma studio"
+    "vercel-build": "npx prisma generate",
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
-    "axios": "^1.13.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
