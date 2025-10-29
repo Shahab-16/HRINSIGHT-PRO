@@ -9,11 +9,13 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "vercel-build": "prisma generate",
-    "postinstall": "prisma generate",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init",
-    "prisma:studio": "prisma studio"
+
+    "vercel-build": "npx prisma generate && echo '✅ Prisma Client generated for Vercel'",
+    "postinstall": "npx prisma generate",
+    
+    "prisma:generate": "npx prisma generate",
+    "prisma:migrate": "npx prisma migrate dev --name init",
+    "prisma:studio": "npx prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
