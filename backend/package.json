@@ -9,17 +9,11 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-
     "vercel-build": "prisma generate",
-
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
-    "prisma:studio": "prisma studio",
-
-
-    "vercel:dev": "vercel dev",
-
-    "postinstall": "prisma generate"
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
@@ -29,7 +23,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^6.10.1",           
+    "nodemailer": "^6.10.1",
     "otp-generator": "^4.0.1",
     "qrcode": "^1.5.4",
     "serverless-http": "^3.2.0",

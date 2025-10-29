@@ -14,16 +14,20 @@ app.set("trust proxy", 1);
 // ✅ Allowed origins for both local + Vercel
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://hrinsight-pro.vercel.app",
+  "https://hrinsight-pro.vercel.app"
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // Allow tools like Postman (no origin) or allowed origins
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else if (/^https:\/\/hrinsight-pro-.*\.vercel\.app$/.test(origin)) {
+    }
+    // Allow preview deployments
+    else if (/^https:\/\/hrinsight-pro-.*\.vercel\.app$/.test(origin)) {
       callback(null, true);
-    } else {
+    }
+    else {
       callback(new Error(`❌ CORS blocked for origin: ${origin}`));
     }
   },
@@ -36,15 +40,15 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
-// ✅ Connect DB only once per Vercel instance
+// ✅ Connect DB (only once per cold start)
 await connectDB();
 
-// ✅ Health route
+// ✅ Health check
 app.get("/", (req, res) => {
-  res.status(200).send("✅ HRInsight Pro Backend is live!");
+  res.status(200).send("✅ HRInsight Pro Backend is live and connected to DB!");
 });
 
-// ✅ All routes
+// ✅ Mount routes
 app.use("/api/admin", adminRoutes);
 app.use("/api/hr", hrRoutes);
 app.use("/api/tokens", tokenRoutes);
