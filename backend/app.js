@@ -14,8 +14,7 @@ app.use(express.json());
 
 await connectDB();
 
-app.get("/", (req, res) => res.send("✅ HRInsight Pro Backend Live!"));
-
+app.get("/", (_, res) => res.send("✅ HRInsight Pro Backend Live!"));
 app.use("/api/admin", adminRoutes);
 app.use("/api/hr", hrRoutes);
 app.use("/api/tokens", tokenRoutes);
