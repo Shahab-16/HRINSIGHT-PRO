@@ -1,3 +1,4 @@
+// src/App.jsx
 import "./App.css";
 import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
@@ -23,7 +24,7 @@ function App() {
           }
         />
 
-        {/* ---------- INVITE REGISTRATION ROUTE ---------- */}
+        {/* ---------- INVITE / REGISTRATION ROUTE ---------- */}
         <Route
           path="/register"
           element={
@@ -36,6 +37,8 @@ function App() {
         {/* ---------- DASHBOARDS ---------- */}
         <Route path="/admin/*" element={<AdminDashboard />} />
         <Route path="/hr/*" element={<HRDashboard />} />
+
+        {/* ---------- TEST PAGE (token/testId) ---------- */}
         <Route path="/hr/test/:testId" element={<HRTestPage />} />
       </Routes>
     </div>

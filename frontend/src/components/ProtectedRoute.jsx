@@ -1,13 +1,15 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { Navigate, useLocation } from "react-router-dom";
 
-function ProtectedRoute({ children, role }) {
-  const { user } = useAuth();
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = localStorage.getItem("token"); // or your auth logic
+  const location = useLocation();
 
-  if (!user) return <Navigate to={`/${role}/login`} />;
-  if (role && user.role !== role) return <Navigate to="/" />;
+  if (!isAuthenticated) {
+    // Redirect to login but preserve intended route
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+  }
 
   return children;
-}
+};
 
 export default ProtectedRoute;

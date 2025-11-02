@@ -1,29 +1,22 @@
+// src/components/Auth/LoginForm.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import {
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ImCross, ImArrowLeft2 } from "react-icons/im";
-import {
-  FaUserShield,
-  FaUserPlus,
-  FaEnvelopeOpenText,
-} from "react-icons/fa";
+import { FaUserShield, FaUserPlus, FaEnvelopeOpenText } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 const LoginForm = ({ inviteMode = false }) => {
   const navigate = useNavigate();
   const params = useParams();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token"); // test token in invite link
-  const BackendURL = import.meta.env.VITE_BACKEND_URL;
+  const inviteToken = searchParams.get("token") || null; // token from ?token=...
+  const BackendURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-  // ✅ If invite link (no role param) → HR by default
+  // If route param role exists (like /login/:role), we'll use it; else HR by default
   const role = params.role || "hr";
 
-  const [currState, setCurrState] = useState("Login");
+  const [currState, setCurrState] = useState("Login"); // Login | Register | Verify
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState("");
   const [formData, setFormData] = useState({
@@ -34,40 +27,69 @@ const LoginForm = ({ inviteMode = false }) => {
   });
 
   useEffect(() => {
-    if (inviteMode || token) {
+    // If came via invite link or inviteMode prop, switch to Register
+    if (inviteMode || inviteToken) {
       setCurrState("Register");
+      if (inviteToken) {
+        // optionally prefill email if token->server can return an invite email (not implemented here)
+      }
     }
-  }, [inviteMode, token]);
+  }, [inviteMode, inviteToken]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((p) => ({ ...p, [name]: value }));
+  };
+
+  const goBack = () => navigate("/login");
+
+  const onLoginSuccessRedirect = () => {
+    // If there is a token in search params (invite/test token) navigate to test page using token
+    if (inviteToken) {
+      // token is used as "testId" in route
+      navigate(`/hr/test/${inviteToken}`);
+    } else {
+      // default dashboards
+      if (role === "admin") navigate("/admin/dashboard");
+      else navigate("/hr/dashboard");
+    }
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setLoading(true);
 
     try {
-      // ✅ LOGIN
       if (currState === "Login") {
-        const res = await axios.post(`${BackendURL}/api/${role}/login`, {
-          email: formData.email,
-          password: formData.password,
-        });
+        // LOGIN
+        const res = await axios.post(
+          `${BackendURL}/api/${role}/login`,
+          {
+            email: formData.email,
+            password: formData.password,
+          },
+          { withCredentials: true }
+        );
 
-        localStorage.setItem(`${role}Token`, res.data.token);
+        // Save token locally (if backend returns token)
+        if (res.data?.token) {
+          localStorage.setItem(`${role}Token`, res.data.token);
+        }
+
         toast.success(`${role.toUpperCase()} logged in successfully`);
-
-        // 🚀 If user came from test link → go directly to test
-        if (token) navigate(`/hr/test/${token}`);
-        else navigate(`/${role}/dashboard/home`);
-      }
-
-      // ✅ REGISTER → send OTP
-      else if (currState === "Register" && role === "hr") {
-        if (formData.password !== formData.confirmPassword)
-          return toast.error("Passwords do not match!");
+        onLoginSuccessRedirect();
+      } else if (currState === "Register" && role === "hr") {
+        // REGISTER -> server sends OTP to email
+        if (!formData.name || !formData.email || !formData.password) {
+          toast.error("Please fill all required fields");
+          setLoading(false);
+          return;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          toast.error("Passwords do not match!");
+          setLoading(false);
+          return;
+        }
 
         await axios.post(`${BackendURL}/api/hr/register`, {
           name: formData.name,
@@ -77,10 +99,14 @@ const LoginForm = ({ inviteMode = false }) => {
 
         setCurrState("Verify");
         toast.success("OTP sent to your email");
-      }
+      } else if (currState === "Verify" && role === "hr") {
+        // VERIFY OTP
+        if (!otp || !formData.email) {
+          toast.error("Provide OTP and Email");
+          setLoading(false);
+          return;
+        }
 
-      // ✅ VERIFY OTP
-      else if (currState === "Verify" && role === "hr") {
         await axios.post(`${BackendURL}/api/hr/verify`, {
           email: formData.email,
           otp,
@@ -88,18 +114,22 @@ const LoginForm = ({ inviteMode = false }) => {
 
         toast.success("Email verified successfully!");
 
-        // 🚀 After verification → go directly to test if token exists
-        if (token) navigate(`/hr/test/${token}`);
-        else setCurrState("Login");
+        // After verification, if inviteToken exists → go to the test
+        if (inviteToken) {
+          navigate(`/hr/test/${inviteToken}`);
+        } else {
+          // go to login so user can login or we may auto-login if backend supplied token
+          setCurrState("Login");
+        }
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Something went wrong");
+      console.error("Auth error:", err?.response?.data || err.message || err);
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err.message || "Something went wrong";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
-
-  const goBack = () => navigate("/login");
 
   return (
     <div className="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-gray-100">
@@ -114,7 +144,7 @@ const LoginForm = ({ inviteMode = false }) => {
           onClick={goBack}
         />
 
-        {/* Left Side */}
+        {/* Left */}
         <div className="w-1/2 hidden lg:flex items-center justify-center bg-indigo-50">
           {role === "admin" ? (
             <FaUserShield className="text-[150px] text-indigo-500" />
@@ -123,7 +153,7 @@ const LoginForm = ({ inviteMode = false }) => {
           )}
         </div>
 
-        {/* Right Form Section */}
+        {/* Right Form */}
         <div className="w-full lg:w-1/2 p-10 flex flex-col justify-center">
           <h2 className="text-3xl font-extrabold text-center mb-6 text-gray-800">
             {currState === "Login"
@@ -138,9 +168,7 @@ const LoginForm = ({ inviteMode = false }) => {
             <div className="flex justify-between mb-6 gap-4">
               <button
                 className={`w-1/2 py-2 ${
-                  currState === "Login"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-600"
+                  currState === "Login" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
                 } hover:bg-blue-700 transition-colors rounded-lg`}
                 onClick={() => setCurrState("Login")}
               >
@@ -150,9 +178,7 @@ const LoginForm = ({ inviteMode = false }) => {
               {role === "hr" && (
                 <button
                   className={`w-1/2 py-2 ${
-                    currState === "Register"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-600"
+                    currState === "Register" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
                   } hover:bg-blue-700 transition-colors rounded-lg`}
                   onClick={() => setCurrState("Register")}
                 >
@@ -172,6 +198,7 @@ const LoginForm = ({ inviteMode = false }) => {
                 value={formData.name}
                 onChange={handleChange}
                 className="w-full h-[50px] border border-gray-300 rounded-lg px-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                required
               />
             )}
 
@@ -184,6 +211,7 @@ const LoginForm = ({ inviteMode = false }) => {
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full h-[50px] border border-gray-300 rounded-lg px-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
                 />
                 <input
                   type="password"
@@ -192,6 +220,7 @@ const LoginForm = ({ inviteMode = false }) => {
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full h-[50px] border border-gray-300 rounded-lg px-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
                 />
               </>
             )}
@@ -204,6 +233,7 @@ const LoginForm = ({ inviteMode = false }) => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 className="w-full h-[50px] border border-gray-300 rounded-lg px-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                required
               />
             )}
 
@@ -218,8 +248,7 @@ const LoginForm = ({ inviteMode = false }) => {
                   maxLength={6}
                 />
                 <p className="text-center text-gray-600 text-sm flex items-center justify-center gap-2">
-                  <FaEnvelopeOpenText className="text-blue-500" /> Check your
-                  email for the OTP
+                  <FaEnvelopeOpenText className="text-blue-500" /> Check your email for the OTP
                 </p>
               </div>
             )}
@@ -244,20 +273,14 @@ const LoginForm = ({ inviteMode = false }) => {
               {currState === "Login" ? (
                 <>
                   Don’t have an account?{" "}
-                  <button
-                    onClick={() => setCurrState("Register")}
-                    className="text-blue-600 hover:underline font-semibold"
-                  >
+                  <button onClick={() => setCurrState("Register")} className="text-blue-600 hover:underline font-semibold">
                     Register here
                   </button>
                 </>
               ) : (
                 <>
                   Already have an account?{" "}
-                  <button
-                    onClick={() => setCurrState("Login")}
-                    className="text-blue-600 hover:underline font-semibold"
-                  >
+                  <button onClick={() => setCurrState("Login")} className="text-blue-600 hover:underline font-semibold">
                     Login here
                   </button>
                 </>
