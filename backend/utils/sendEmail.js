@@ -1,18 +1,27 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-export const sendMail = async (to, subject, text) => {
+export const sendMail = async (to, subject, html) => {
   try {
-    const data = await resend.emails.send({
-      from: "HRInsight Pro <onboarding@resend.dev>", // temporary sender; replace after domain verification
-      to,
-      subject,
-      text,
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // true for port 465
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
+      },
     });
 
-    console.log("✅ Email sent successfully:", data);
+    const mailOptions = {
+      from: `"HRInsight Pro" <${process.env.MAIL_USER}>`,
+      to,
+      subject,
+      html,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ Email sent successfully:", info.response);
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.error("❌ Error sending email:", error.message);
   }
 };
