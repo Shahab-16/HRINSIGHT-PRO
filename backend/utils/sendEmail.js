@@ -3,32 +3,25 @@ import nodemailer from "nodemailer";
 export const sendMail = async (to, subject, html) => {
   try {
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,              // TLS port
-      secure: false,          // must be false for 587
-      requireTLS: true,
+      host: process.env.MAIL_HOST,
+      port: process.env.MAIL_PORT,
+      secure: false,
       auth: {
-        user: process.env.MAIL_USER, // your Gmail
-        pass: process.env.MAIL_PASS, // your 16-digit app password
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
-      tls: {
-        rejectUnauthorized: false,
-      },
-      connectionTimeout: 10000, // 10s timeout to avoid hanging
     });
 
-    const mailOptions = {
-      from: `"HRInsight Pro" <${process.env.MAIL_USER}>`,
+    const info = await transporter.sendMail({
+      from: `"HRInsight Pro" <mdshahabuddin0516@gmail.com>`, // your verified sender
       to,
       subject,
       html,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully:", info.response);
-    return info;
+    console.log(`✅ Email sent successfully to ${to}:`, info.response);
   } catch (error) {
-    console.error("❌ Email send error:", error.message);
-    throw new Error("Email could not be sent. Check credentials or network.");
+    console.error(`❌ Email send error to ${to}:`, error.message);
+    throw new Error("Email could not be sent. Check SMTP credentials or network.");
   }
 };
