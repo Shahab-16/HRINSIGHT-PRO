@@ -2,26 +2,25 @@ import nodemailer from "nodemailer";
 
 export const sendMail = async (to, subject, html) => {
   try {
+    // Use Gmail service for simplicity and Render compatibility
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587, // <-- use 587 instead of 465
-      secure: false, // <-- false for 587
+      service: "gmail",
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: process.env.MAIL_USER, // Your Gmail address
+        pass: process.env.MAIL_PASS, // App password from Google
       },
     });
 
-    const mailOptions = {
+    await transporter.sendMail({
       from: `"HRInsight Pro" <${process.env.MAIL_USER}>`,
       to,
       subject,
       html,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully:", info.response);
+    console.log(`✅ Email sent to: ${to}`);
   } catch (error) {
-    console.error("❌ Error sending email:", error.message);
+    console.error("❌ Email send error:", error.message);
+    throw new Error("Email could not be sent. Check your credentials or app password.");
   }
 };
